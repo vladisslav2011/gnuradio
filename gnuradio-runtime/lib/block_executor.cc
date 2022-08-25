@@ -151,10 +151,14 @@ static bool propagate_tags(block::tag_propagation_policy_t policy,
             if (rrate == 1.0) {
                 for (t = rtags.begin(); t != rtags.end(); t++) {
                     for (int o = 0; o < d->noutputs(); o++) {
-                        tag_t new_tag = *t;
-                        new_tag.offset =
-                            new_tag.offset - start_nitems_read[i] + d->nitems_written(o);
-                        out_buf[o]->add_item_tag(new_tag);
+                        if (start_nitems_read[i] == d->nitems_written(o))
+                            out_buf[o]->add_item_tag(*t);
+                        else {
+                            tag_t new_tag = *t;
+                            new_tag.offset = new_tag.offset - start_nitems_read[i] +
+                                             d->nitems_written(o);
+                            out_buf[o]->add_item_tag(new_tag);
+                        }
                     }
                 }
             } else if (use_fp_rrate) {
@@ -169,6 +173,7 @@ static bool propagate_tags(block::tag_propagation_policy_t policy,
                 }
             } else {
                 mpz_class offset;
+                mpz_class tmp;
                 for (t = rtags.begin(); t != rtags.end(); t++) {
                     for (int o = 0; o < d->noutputs(); o++) {
                         tag_t new_tag = *t;
@@ -179,8 +184,23 @@ static bool propagate_tags(block::tag_propagation_policy_t policy,
                                    0,
                                    0,
                                    &new_tag.offset);
-                        offset = (offset - start_nitems_read[i]) * mp_rrate + one_half +
-                                 d->nitems_written(o);
+                        mpz_import(tmp.get_mpz_t(),
+                                   1,
+                                   1,
+                                   sizeof(start_nitems_read[i]),
+                                   0,
+                                   0,
+                                   &start_nitems_read[i]);
+			offset = (offset - tmp)* mp_rrate + one_half;
+			auto nitems_written = d->nitems_written(o);
+                        mpz_import(tmp.get_mpz_t(),
+                                   1,
+                                   1,
+                                   sizeof(nitems_written),
+                                   0,
+                                   0,
+                                   &nitems_written);
+			offset = offset + tmp;
                         new_tag.offset = offset.get_ui();
                         out_buf[o]->add_item_tag(new_tag);
                     }
@@ -208,10 +228,14 @@ static bool propagate_tags(block::tag_propagation_policy_t policy,
                 std::vector<tag_t>::iterator t;
                 if (rrate == 1.0) {
                     for (t = rtags.begin(); t != rtags.end(); t++) {
-                        tag_t new_tag = *t;
-                        new_tag.offset =
-                            new_tag.offset - start_nitems_read[i] + d->nitems_written(i);
-                        out_buf->add_item_tag(new_tag);
+                        if (start_nitems_read[i] == d->nitems_written(i))
+                            out_buf->add_item_tag(*t);
+                        else {
+                            tag_t new_tag = *t;
+                            new_tag.offset = new_tag.offset - start_nitems_read[i] +
+                                             d->nitems_written(i);
+                            out_buf->add_item_tag(new_tag);
+                        }
                     }
                 } else if (use_fp_rrate) {
                     for (t = rtags.begin(); t != rtags.end(); t++) {
@@ -223,6 +247,7 @@ static bool propagate_tags(block::tag_propagation_policy_t policy,
                     }
                 } else {
                     mpz_class offset;
+                    mpz_class tmp;
                     for (t = rtags.begin(); t != rtags.end(); t++) {
                         tag_t new_tag = *t;
                         mpz_import(offset.get_mpz_t(),
@@ -232,8 +257,23 @@ static bool propagate_tags(block::tag_propagation_policy_t policy,
                                    0,
                                    0,
                                    &new_tag.offset);
-                        offset = (offset - start_nitems_read[i]) * mp_rrate + one_half +
-                                 d->nitems_written(i);
+                        mpz_import(tmp.get_mpz_t(),
+                                   1,
+                                   1,
+                                   sizeof(start_nitems_read[i]),
+                                   0,
+                                   0,
+                                   &start_nitems_read[i]);
+			offset = (offset - tmp)* mp_rrate + one_half;
+			auto nitems_written = d->nitems_written(i);
+                        mpz_import(tmp.get_mpz_t(),
+                                   1,
+                                   1,
+                                   sizeof(nitems_written),
+                                   0,
+                                   0,
+                                   &nitems_written);
+			offset = offset + tmp;
                         new_tag.offset = offset.get_ui();
                         out_buf->add_item_tag(new_tag);
                     }
